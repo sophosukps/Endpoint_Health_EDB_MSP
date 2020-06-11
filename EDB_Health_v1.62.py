@@ -1,6 +1,6 @@
 # These scripts are examples and unsupported
 # Make sure requests is installed
-# EDB Health v1.6
+# EDB Health v1.62
 import requests
 import csv
 import configparser
@@ -98,10 +98,26 @@ def get_all_computers(sub_estate_token, url, name):
         computer_keys = ('id', 'hostname', 'lastSeenAt', 'threats', 'service_health', 'health', 'tamperProtectionEnabled', 'ipv4Addresses', 'associatedPerson', 'Sub Estate', 'os', 'majorVersion', 'type')
         #Add the computers to the computers list
         for all_computers in computers_json["items"]:
+            works = 0
             # Make a temporary Dictionary to be added to the sub estate list
             computer_dictionary = {key:value for key, value in all_computers.items() if key in computer_keys}
+            # If no hostname is returned add unknown
+            if 'hostname' not in computer_dictionary.keys():
+                computer_dictionary['hostname'] = 'Unknown'
+            # This line allows you to debug on a certain computer. Add computer name
+            if 'mc-nuc-dciii' == computer_dictionary['hostname']:
+                print('Add breakpoint here')
             # Sends the last seen date to get_days_since_last_seen and converts this to days
-            computer_dictionary['Last_Seen'] = get_days_since_last_seen(computer_dictionary['lastSeenAt'])
+            if 'lastSeenAt' in computer_dictionary.keys():
+                computer_dictionary['Last_Seen'] = get_days_since_last_seen(computer_dictionary['lastSeenAt'])
+                works = 1
+            if works == 0:
+                # API is returning incomplete machine fields
+                computer_dictionary['hostname'] = 'Unknown'
+                computer_dictionary['Sub Estate'] = name
+                computer_dictionary['Machine_URL'] = 'N/A'
+                computer_list.append(computer_dictionary)
+                continue
             if 'health' in computer_dictionary.keys():
                 if 'status' in computer_dictionary['health']['services']:
                     computer_dictionary['service_health'] = computer_dictionary['health']['services']['status']
@@ -125,10 +141,16 @@ def get_all_computers(sub_estate_token, url, name):
             if 'encryption' in all_computers.keys():
                 # I don't think this is the best code. The encryption status is a dictionary, with a list, another dictionary, then the status
                 # At present this just reports one drive. The first one in the list. 0
-                if len(all_computers['encryption']['volumes']) != 0:
-                    encryption_status = all_computers['encryption']['volumes']
+                encryption_status = all_computers['encryption']['volumes']
+                # Checks to see if the volume is returned correctly. Sometimes encryption is returned with no volume
+                try:
+                    volume_returned = encryption_status[0]
                     computer_dictionary['encryption'] = (encryption_status[0]['status'])
-                    # Checks to see if the machine is in a group
+                except IndexError:
+                    computer_dictionary['encryption'] = 'Unknown'
+                    print()
+                # computer_dictionary['encryption'] = (encryption_status[0]['status'])
+            # Checks to see if the machine is in a group
             if 'group' in all_computers.keys():
                 computer_dictionary['group'] = all_computers['group']['name']
             # Get installed products
@@ -150,9 +172,6 @@ def get_all_computers(sub_estate_token, url, name):
             # Adds the sub estate name to the computer dictionary
             computer_dictionary['Sub Estate'] = name
             computer_list.append(computer_dictionary)
-            # This line allows you to debug on a certain computer. Add computer name
-            if 'mc-nuc-dciii' == computer_dictionary['hostname']:
-                print('Add breakpoint here')
         # Check to see if you have more than 50 machines by checking if nextKey exists
         # We need to check if we need to page through lots of computers
         if 'nextKey' in computers_json['pages']:

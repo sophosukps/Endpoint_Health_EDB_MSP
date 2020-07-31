@@ -15,12 +15,12 @@
 #
 # EDB_Health_v1.62
 #
-# Outputs csv file containing full inventory of all devices in all sub estates
+# Outputs csv file containing full inventory and health stats of all devices in every sub estate
 #
 #
 # By: Michael Curtis and Robert Prechtel
 # Date: 29/5/2020
-# EDB Health v1.62
+# Version 1.62
 # README: This script is an unsupported solution provided by
 #           Sophos Professional Services
 
